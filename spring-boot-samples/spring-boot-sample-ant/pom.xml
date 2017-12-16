@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-samples</artifactId>
-		<version>1.5.8.e1</version>
+		<version>1.5.8.e2-SNAPSHOT</version>
 	</parent>
 	<artifactId>spring-boot-sample-ant</artifactId>
 	<name>Spring Boot Ant Sample</name>
@@ -31,7 +31,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-antlib</artifactId>
-			<version>1.5.8.e1</version>
+			<version>1.5.8.e2-SNAPSHOT</version>
 		</dependency>
 		<!-- Test -->
 		<dependency>
@@ -84,7 +84,7 @@
 					<dependency>
 						<groupId>org.springframework.boot</groupId>
 						<artifactId>spring-boot-antlib</artifactId>
-						<version>1.5.8.e1</version>
+						<version>1.5.8.e2-SNAPSHOT</version>
 					</dependency>
 				</dependencies>
 			</plugin>

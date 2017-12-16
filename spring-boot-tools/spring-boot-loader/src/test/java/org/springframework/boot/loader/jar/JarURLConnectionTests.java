@@ -18,6 +18,7 @@ package org.springframework.boot.loader.jar;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.net.URL;
 
 import org.junit.Before;
@@ -52,7 +53,7 @@ public class JarURLConnectionTests {
 	@Before
 	public void setup() throws Exception {
 		this.rootJarFile = this.temporaryFolder.newFile();
-		TestJarCreator.createTestJar(this.rootJarFile);
+		TestJarCreator.createTestJar(this.rootJarFile, false, true);
 		this.jarFile = new JarFile(this.rootJarFile);
 	}
 
@@ -99,10 +100,63 @@ public class JarURLConnectionTests {
 				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
 	}
 
+	@Test(expected = FileNotFoundException.class)
+	public void connectionToEntryUsingWrongAbsoluteUrlForNestedEntry() throws Exception {
+		URL url = new URL("jar:file:" + getAbsolutePath() + "!/nested-wrong.jar!/3.dat");
+		JarURLConnection.get(url, this.jarFile).getInputStream();
+	}
+
+	@Test(expected = FileNotFoundException.class)
+	public void connectionToEntryUsingWrongAbsoluteUrlForNestedEntry2() throws Exception {
+		URL url = new URL("jar:file:" + getAbsolutePath() + "!/nested.jar!/3-wrong.dat");
+		JarURLConnection.get(url, this.jarFile).getInputStream();
+	}
+
 	@Test
 	public void connectionToEntryUsingRelativeUrlForNestedEntry() throws Exception {
 		URL url = new URL("jar:file:" + getRelativePath() + "!/nested.jar!/3.dat");
 		assertThat(JarURLConnection.get(url, this.jarFile).getInputStream())
+				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test
+	public void connectionToEntryUsingRelativeUrlForNestedNestedEntry() throws Exception {
+		URL url = new URL("jar:file:" + getRelativePath() + "!/nesting-nested.jar!/nested.jar!/3.dat");
+		assertThat(JarURLConnection.get(url, this.jarFile).getInputStream())
+				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test
+	public void connectionToEntryUsingRelativeUrlForNestedNestedEntryWithSpace() throws Exception {
+		URL url = new URL("jar:file:" + getRelativePath() + "!/nesting%20nested.jar!/nested.jar!/3.dat");
+		assertThat(JarURLConnection.get(url, this.jarFile).getInputStream())
+				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test
+	public void connectionToEntryUsingRelativeUrlForNestedNestedEntryWithTwoSpaces() throws Exception {
+		URL url = new URL("jar:file:" + getRelativePath() + "!/nesting%20nested%202.jar!/nested%202.jar!/3.dat");
+		assertThat(JarURLConnection.get(url, this.jarFile).getInputStream())
+				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test
+	public void connectionToEntryUsingRelativeUrlForNestedNestedEntryFromNestedJarFile() throws Exception {
+		URL url = new URL("jar:file:" + getRelativePath() + "!/nesting-nested.jar!/nested.jar!/3.dat");
+		JarFile nested = this.jarFile
+				.getNestedJarFile(this.jarFile.getEntry("nesting-nested.jar"));
+		assertThat(JarURLConnection.get(url, nested).getInputStream())
+				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test
+	public void connectionToEntryUsingRelativeUrlForNestedNestedEntryFromNested2JarFile() throws Exception {
+		URL url = new URL("jar:file:" + getRelativePath() + "!/nesting-nested.jar!/nested.jar!/3.dat");
+		JarFile nested = this.jarFile
+				.getNestedJarFile(this.jarFile.getEntry("nesting-nested.jar"));
+		JarFile nested2 = nested
+				.getNestedJarFile(this.jarFile.getEntry("nested.jar"));
+		assertThat(JarURLConnection.get(url, nested2).getInputStream())
 				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
 	}
 
@@ -114,6 +168,25 @@ public class JarURLConnectionTests {
 				.getNestedJarFile(this.jarFile.getEntry("nested.jar"));
 		assertThat(JarURLConnection.get(url, nested).getInputStream())
 				.hasSameContentAs(new ByteArrayInputStream(new byte[] { 3 }));
+	}
+
+	@Test(expected = FileNotFoundException.class)
+	public void connectionToEntryUsingWrongAbsoluteUrlForEntryFromNestedJarFile()
+			throws Exception {
+		// coincidental match (extractFullSpec would return "")
+		URL url = new URL("jar:file:" + getAbsolutePath() + "!/w.jar!/3.dat");
+		JarFile nested = this.jarFile
+				.getNestedJarFile(this.jarFile.getEntry("nested.jar"));
+		JarURLConnection.get(url, nested).getInputStream();
+	}
+
+	@Test(expected = FileNotFoundException.class)
+	public void connectionToEntryUsingWrongAbsoluteUrlForEntryFromNestedJarFile2()
+			throws Exception {
+		URL url = new URL("jar:file:" + getAbsolutePath() + "!/nested.jar!/3-wrong.dat");
+		JarFile nested = this.jarFile
+				.getNestedJarFile(this.jarFile.getEntry("nested.jar"));
+		JarURLConnection.get(url, nested).getInputStream();
 	}
 
 	@Test

@@ -254,10 +254,15 @@ final class JarURLConnection extends java.net.JarURLConnection {
 	}
 
 	static JarURLConnection get(URL url, JarFile jarFile) throws IOException {
-		if (!isRelevant(url, jarFile.getPathFromRoot())) {
+		String pursuedFile = getDecodedFile(url);
+		int firstSeparatorIndex = pursuedFile.indexOf(SEPARATOR);
+		if (firstSeparatorIndex == -1) {
+			return NOT_FOUND_CONNECTION;            // should never occur as the separator is required in JAR URLs
+		}
+		if (!jarIsRelevant(pursuedFile, firstSeparatorIndex, jarFile.getPathFromRoot())) {
 			return NOT_FOUND_CONNECTION;
 		}
-		String spec = extractFullSpec(url, jarFile.getPathFromRoot());
+		String spec = extractFullSpec(pursuedFile, firstSeparatorIndex, jarFile.getPathFromRoot());
 		int separator;
 		int index = 0;
 		while ((separator = spec.indexOf(SEPARATOR, index)) > 0) {
@@ -279,20 +284,34 @@ final class JarURLConnection extends java.net.JarURLConnection {
 		return new JarURLConnection(url, jarFile, jarEntryName);
 	}
 
-	private static boolean isRelevant(URL url, String pathFromRoot) {
+	private static String getDecodedFile(URL url) {
 		String file = url.getFile();
-		int separatorIndex = file.indexOf(SEPARATOR);
-		return separatorIndex >= 0 && file.substring(separatorIndex).startsWith(pathFromRoot);
+		if (file.indexOf('%') == -1) {
+			return file;
+		}
+		try {
+			return java.net.URLDecoder.decode(file, "utf-8");       // might be slow but hopefully invoked only occasionally
+		}
+		catch (UnsupportedEncodingException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
-	private static String extractFullSpec(URL url, String pathFromRoot) {
-		String file = url.getFile();
-		int separatorIndex = file.indexOf(SEPARATOR);
-		if (separatorIndex < 0) {
-			return "";
-		}
-		int specIndex = separatorIndex + SEPARATOR.length() + pathFromRoot.length();
-		return file.substring(specIndex);
+	/*
+	 * Returns true if the pursued item can reside in the containing jar (based on containing jar path from root).
+	 */
+	private static boolean jarIsRelevant(String pursuedFile, int firstSeparatorIndex, String jarPathFromRoot) {
+		String pursuedPathFromRoot = pursuedFile.substring(firstSeparatorIndex);
+		return pursuedPathFromRoot.startsWith(jarPathFromRoot);
+	}
+
+	/*
+	 * Returns path of pursued item relative to the root of the containing jar.
+	 * precondition: jarIsRelevant == true
+	 */
+	private static String extractFullSpec(String pursuedFile, int firstSeparatorIndex, String jarPathFromRoot) {
+		int specIndex = firstSeparatorIndex + jarPathFromRoot.length() + SEPARATOR.length();
+		return pursuedFile.substring(specIndex);
 	}
 
 	private static JarURLConnection notFound() {
